@@ -1,17 +1,159 @@
-# task_manager
+# 🎯 تطبيق إنجاز (Injaz) - لإدارة المهام والتركيز
 
-A new Flutter project.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/tahaAlasri/Task-Manager/main/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" alt="Injaz Logo" width="120" />
+</p>
 
-## Getting Started
+<p align="center">
+  <b>تطبيق احترافي وشامل لإدارة المهام اليومية، تعزيز الإنتاجية عبر تقنية البومودورو، وتأمين البيانات بالمصادقة الحيوية.</b>
+</p>
 
-This project is a starting point for a Flutter application.
+<p align="center">
+  <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
+  <img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
+  <img src="https://img.shields.io/badge/Architecture-Clean%20Architecture-success?style=for-the-badge" alt="Clean Architecture" />
+  <img src="https://img.shields.io/badge/State%20Management-BLoC%20%2F%20Cubit-blueviolet?style=for-the-badge" alt="BLoC / Cubit" />
+  <img src="https://img.shields.io/badge/Database-Hive%20(Offline%20First)-yellow?style=for-the-badge" alt="Hive" />
+</p>
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 📖 جدول المحتويات
+- [عن التطبيق](#-عن-التطبيق)
+- [المميزات الرئيسية](#-المميزات-الرئيسية)
+- [الهيكلية والمعمارية](#-الهيكلية-والمعمارية)
+- [التقنيات والمكتبات المستخدمة](#-التقنيات-والمكتبات-المستخدمة)
+- [متطلبات التشغيل](#-متطلبات-التشغيل)
+- [طريقة التثبيت والتشغيل](#-طريقة-التثبيت-والتشغيل)
+- [هيكل المجلدات](#-هيكل-المجلدات)
+- [المساهمة](#-المساهمة)
+- [الترخيص](#-الترخيص)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 🌟 عن التطبيق
+
+**إنجاز (Injaz)** هو تطبيق متكامل مصمم خصيصاً لمساعدتك على تنظيم جدولك اليومي، إنجاز مهامك بكفاءة عالية، ومحاربة التسويف. يجمع التطبيق بين قوة **إدارة المهام المتقدمة**، وسحر **مؤقت بومودورو للتركيز العميق**، مع طبقة أمان متطورة تدعم **المصادقة ببصمة الإصبع والوجه (Biometrics)**، وكل ذلك في بيئة تعمل بالكامل دون الحاجة إلى اتصال بالإنترنت (Offline-First).
+
+---
+
+## ✨ المميزات الرئيسية
+
+### 📋 إدارة مهام ذكية ومتقدمة
+- **تصنيفات مخصصة:** تنظيم المهام داخل تصنيفات ملونة بأيقونات مميزة (العمل، شخصي، دراسة، إلخ).
+- **مستويات الأولوية:** تصنيف المهام حسب الأهمية (منخفضة، متوسطة، عالية، عاجلة).
+- **مهام فرعية (Subtasks):** تقسيم المهام الكبيرة لخطوات أصغر مع متابعة نسبة الإنجاز بشريط تقدم تفاعلي.
+- **تكرار دوري:** جدولة المهام المتكررة (يومياً، أسبوعياً، شهرياً).
+- **المرفقات:** إرفاق الصور والمستندات للمهمة مع عارض صور مدمج تكبير وتصغير.
+- **المفضلة وسلة المحذوفات والأرشيف:** حفظ المهام الهامة وإمكانية استرجاع المهام المحذوفة في أي وقت.
+
+### 🍅 مؤقت التركيز (Pomodoro Technique)
+- دورات عمل وفترات راحة قابلة للتخصيص الكامل (25 دقيقة تركيز، 5 دقائق استراحة، استراحة طويلة).
+- أصوات واهتزازات تنبيهية عند انتقال الجلسات.
+- عداد تفاعلي يوضح تقدم الجلسات ومستوى الإنتاجية اليومية.
+
+### 📅 تقويم تفاعلي
+- عرض المهام في شكل جدول زمني وتقويم شهري/أسبوعي.
+- نقاط توضيحية على الأيام التي تحتوي على مواعيد تسليم أو مهام قائمة.
+
+### 🔒 الخصوصية والأمان
+- دعم القفل بالمصادقة الحيوية (بصمة الإصبع FaceID / TouchID).
+- تشفير كلمات المرور محلياً وخاصية الحماية التلقائية للبيانات.
+
+### 🔔 نظام تنبيهات وإشعارات مجدولة
+- إشعارات محلية دقيقة تذكرك قبل موعد استحقاق المهمة حتى مع إغلاق التطبيق.
+
+### 🎨 واجهة مستخدم عصرية وديناميكية
+- تصميم أنيق يتبع معايير **Material 3**.
+- دعم كامل للوضعين **الفاتح (Light Mode)** و **الداكن (Dark Mode)**.
+- دعم أصيل للغة العربية واتجاه اليمين إلى اليسار (RTL) مع خطوط عربية مريحة للعين.
+
+---
+
+## 🏗️ الهيكلية والمعمارية
+
+تم بناء التطبيق باتباع أفضل ممارسات هندسة البرمجيات عبر **معمارية الكود النظيف (Clean Architecture)** مفصولة الطبقات، لضمان سهولة الاختبار، القابلية للتوسع، والفصل التام بين منطق العمل وواجهة المستخدم:
+
+```
+lib/
+ ├── core/                     # الثوابت، السمات العامة، والمساعدات المشتركة
+ │    ├── constants/           # ألوان التطبيق والنصوص الثابتة
+ │    ├── services/            # خدمات الإشعارات، التخزين، والأمان الحيوي
+ │    ├── theme/               # إدارة الثيمات وألوان الوضع الداكن/الفاتح
+ │    └── utils/               # دوال المساعدة للتواريخ والتكرار
+ └── features/                 # الميزات مقسمة حسب النطاق (Feature-first)
+      ├── auth/                # ميزة المصادقة والأمان
+      │    ├── data/           # مصادر البيانات والنماذج (Models & Local Data Sources)
+      │    ├── domain/         # الكيانات والعقود (Entities & Repositories)
+      │    └── presentation/   # الشاشات وإدارة الحالة (Cubit & Screens)
+      ├── pomodoro/            # ميزة مؤقت التركيز
+      └── tasks/               # ميزة إدارة المهام والتقويم والتصنيفات
+```
+
+---
+
+## 🛠️ التقنيات والمكتبات المستخدمة
+
+| الحزمة | الاستخدام |
+| :--- | :--- |
+| **`flutter_bloc`** | إدارة الحالة (State Management) بالاعتماد على نموذج Cubit الفعّال. |
+| **`hive` & `hive_flutter`** | قاعدة بيانات NoSQL محلية سريعة جداً وخفيفة لتخزين المهام والإعدادات. |
+| **`local_auth`** | المصادقة الحيوية عبر بصمة الإصبع أو التعرف على الوجه. |
+| **`flutter_local_notifications`** | جدولة التنبيهات وإرسال الإشعارات الموضعية للمهام. |
+| **`table_calendar`** | عرض التقويم الشهري والأسبوعي التفاعلي. |
+| **`google_fonts`** | خطوط طباعية حديثة وجمالية. |
+| **`image_picker`** | التقاط واختيار الصور وإرفاقها بالمهام. |
+| **`uuid`** | توليد معرفات فريدة للمهام والأنشطة. |
+| **`intl`** | تنسيق التواريخ والوقت والأرقام بما يناسب اللغة العربية. |
+
+---
+
+## 💻 متطلبات التشغيل
+
+- **Flutter SDK:** الإصدار `^3.12.2` أو أحدث.
+- **Dart SDK:** الإصدار `^3.0.0` أو أحدث.
+- **Android Studio** أو **VS Code** مع إضافات Flutter & Dart.
+- جهاز حقيقي أو محاكي (Android أو iOS).
+
+---
+
+## 🚀 طريقة التثبيت والتشغيل
+
+1. **استنساخ المستودع (Clone the repository):**
+   ```bash
+   git clone https://github.com/tahaAlasri/Task-Manager.git
+   cd Task-Manager
+   ```
+
+2. **تثبيت الحزم والمكتبات (Get Dependencies):**
+   ```bash
+   flutter pub get
+   ```
+
+3. **تشغيل التطبيق (Run Application):**
+   ```bash
+   flutter run
+   ```
+
+---
+
+## 🤝 المساهمة
+
+نرحب بمساهماتكم لتطوير التطبيق! للمساهمة:
+1. قم بعمل **Fork** للمشروع.
+2. أنشئ فرعاً لميزتك الجديدة (`git checkout -b feature/NewFeature`).
+3. احفظ التغييرات (`git commit -m 'feat: Add NewFeature'`).
+4. ادفع الفرع (`git push origin feature/NewFeature`).
+5. افتح طلب سحب **Pull Request**.
+
+---
+
+## 📄 الترخيص
+
+هذا المشروع مطوّر ومتاح تحت ترخيص مفتوح للاستخدام والتعلم.
+
+---
+
+<p align="center">
+  تم التطوير بكل ❤️ بواسطة <b>طه العسري (Taha Alasri)</b>
+</p>
