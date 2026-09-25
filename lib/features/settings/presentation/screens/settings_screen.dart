@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/localization/locale_cubit.dart';
 import '../../../../core/services/local_database_service.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
@@ -572,8 +573,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 20),
 
-              // 2. إعدادات المظهر والوضع
-              _buildSectionTitle('المظهر والتخصيص', isDark),
+              // 2. إعدادات المظهر والوضع واللغة
+              _buildSectionTitle('المظهر والتخصيص واللغة', isDark),
               Card(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 child: Column(
@@ -590,6 +591,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (widget.onToggleTheme != null) {
                           widget.onToggleTheme!();
                         }
+                      },
+                    ),
+                    const Divider(height: 1),
+                    BlocBuilder<LocaleCubit, Locale>(
+                      builder: (context, currentLocale) {
+                        final isArabic = currentLocale.languageCode == 'ar';
+                        return ListTile(
+                          leading: const Icon(Icons.language_rounded, color: AppColors.primary),
+                          title: const Text('لغة التطبيق / Application Language'),
+                          subtitle: Text(isArabic ? 'العربية (Arabic)' : 'English (الإنجليزية)'),
+                          trailing: DropdownButton<String>(
+                            value: currentLocale.languageCode,
+                            underline: const SizedBox(),
+                            borderRadius: BorderRadius.circular(12),
+                            items: const [
+                              DropdownMenuItem(value: 'ar', child: Text('🇾🇪 العربية')),
+                              DropdownMenuItem(value: 'en', child: Text('🇺🇸 English')),
+                            ],
+                            onChanged: (code) {
+                              if (code != null) {
+                                context.read<LocaleCubit>().setLocale(Locale(code));
+                              }
+                            },
+                          ),
+                        );
                       },
                     ),
                   ],

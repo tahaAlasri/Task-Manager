@@ -86,6 +86,13 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> completeOnboarding() async {
     _hasSeenOnboarding = true;
   }
+
+  @override
+  Future<void> resetPassword(String email, String newPassword) async {
+    if (_currentUser == null || _currentUser!.email != email) {
+      throw Exception('البريد الإلكتروني غير مسجل');
+    }
+  }
 }
 
 void main() {
@@ -160,6 +167,16 @@ void main() {
       await cubit.updateProfile(name: 'أحمد محمود');
       expect(cubit.state.user?.name, equals('أحمد محمود'));
       expect(cubit.state.status, equals(AuthStatus.authenticated));
+    });
+
+    test('إعادة تعيين كلمة المرور بنجاح أو إرجاع خطأ عند عدم وجود الحساب', () async {
+      await cubit.register('أحمد', 'ahmed@test.com', '123456');
+      await cubit.resetPassword('ahmed@test.com', 'newpass123');
+      expect(cubit.state.status, equals(AuthStatus.unauthenticated));
+
+      await cubit.resetPassword('unknown@test.com', 'newpass123');
+      expect(cubit.state.status, equals(AuthStatus.failure));
+      expect(cubit.state.errorMessage, contains('غير مسجل'));
     });
   });
 }

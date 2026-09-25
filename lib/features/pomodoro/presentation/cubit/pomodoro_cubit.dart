@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../../../../core/services/ambient_audio_service.dart';
 import '../../../../core/services/notification_service.dart';
 import 'pomodoro_state.dart';
 
 class PomodoroCubit extends Cubit<PomodoroState> {
   Timer? _timer;
   final Box? _box;
+  final INotificationService _notificationService;
+  final IAmbientAudioService _ambientAudioService;
 
   static const String boxName = 'pomodoro_box';
   static const String keyXpPoints = 'xp_points';
@@ -16,9 +19,15 @@ class PomodoroCubit extends Cubit<PomodoroState> {
   static const String keyFocusMinutes = 'focus_minutes';
   static const String keyShortBreakMinutes = 'short_break_minutes';
   static const String keyLongBreakMinutes = 'long_break_minutes';
+  static const String keySessionHistory = 'session_history';
 
-  PomodoroCubit({Box? box})
-      : _box = box ?? (Hive.isBoxOpen(boxName) ? Hive.box(boxName) : null),
+  PomodoroCubit({
+    Box? box,
+    INotificationService? notificationService,
+    IAmbientAudioService? ambientAudioService,
+  })  : _box = box ?? (Hive.isBoxOpen(boxName) ? Hive.box(boxName) : null),
+        _notificationService = notificationService ?? NotificationService.instance,
+        _ambientAudioService = ambientAudioService ?? AmbientAudioService.instance,
         super(const PomodoroState()) {
     _loadPersistedStats();
   }
@@ -90,39 +99,64 @@ class PomodoroCubit extends Cubit<PomodoroState> {
     ));
   }
 
-  /// بدء أو استئناف المؤقت
+  /// بدء أو استئناف المؤقت بحساب الطابع الزمني الدقيق
   void startTimer() {
     if (state.isRunning) return;
 
-    emit(state.copyWith(isRunning: true));
+    final targetEndTime = DateTime.now().add(Duration(seconds: state.remainingSeconds));
+
+    emit(state.copyWith(
+      isRunning: true,
+      targetEndTime: targetEndTime,
+    ));
+
+    _playAmbientSoundIfEnabled();
+
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state.remainingSeconds > 0) {
-        emit(state.copyWith(remainingSeconds: state.remainingSeconds - 1));
-      } else {
-        _onSessionCompleted();
-      }
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      syncRemainingTime();
     });
+  }
+
+  /// مزامنة الوقت المتبقي اعتماداً على الطابع الزمني لضمان الدقة في الخلفية
+  void syncRemainingTime() {
+    if (!state.isRunning || state.targetEndTime == null) return;
+
+    final now = DateTime.now();
+    final differenceInSeconds = state.targetEndTime!.difference(now).inSeconds;
+
+    if (differenceInSeconds > 0) {
+      emit(state.copyWith(remainingSeconds: differenceInSeconds));
+    } else {
+      _onSessionCompleted();
+    }
   }
 
   /// إيقاف مؤقت للمؤقت
   void pauseTimer() {
     _timer?.cancel();
-    emit(state.copyWith(isRunning: false));
+    _stopAmbientSound();
+    emit(state.copyWith(
+      isRunning: false,
+      clearTargetEndTime: true,
+    ));
   }
 
   /// إعادة ضبط الوقت للجلسة الحالية
   void resetTimer() {
     _timer?.cancel();
+    _stopAmbientSound();
     emit(state.copyWith(
       isRunning: false,
       remainingSeconds: state.totalSeconds,
+      clearTargetEndTime: true,
     ));
   }
 
   /// تغيير نمط المؤقت (تركيز، استراحة قصيرة، استراحة طويلة)
   void switchMode(PomodoroMode mode) {
     _timer?.cancel();
+    _stopAmbientSound();
     int minutes;
     switch (mode) {
       case PomodoroMode.focus:
@@ -141,6 +175,7 @@ class PomodoroCubit extends Cubit<PomodoroState> {
       remainingSeconds: seconds,
       totalSeconds: seconds,
       isRunning: false,
+      clearTargetEndTime: true,
     ));
   }
 
@@ -153,14 +188,72 @@ class PomodoroCubit extends Cubit<PomodoroState> {
     }
   }
 
+  /// تعيين الصوت المحيطي المهدئ
+  Future<void> setAmbientSound(AmbientSoundType sound) async {
+    emit(state.copyWith(ambientSound: sound));
+    if (state.isRunning) {
+      await _playAmbientSoundIfEnabled();
+    }
+  }
+
+  /// تعيين مستوى الصوت
+  Future<void> setAmbientVolume(double volume) async {
+    final clamped = volume.clamp(0.0, 1.0);
+    emit(state.copyWith(ambientVolume: clamped));
+    await _ambientAudioService.setVolume(clamped);
+  }
+
+  Future<void> _playAmbientSoundIfEnabled() async {
+    if (state.ambientSound == AmbientSoundType.none) {
+      await _stopAmbientSound();
+      return;
+    }
+
+    try {
+      await _ambientAudioService.playAmbient(
+        state.ambientSound.name,
+        volume: state.ambientVolume,
+      );
+    } catch (_) {}
+  }
+
+  Future<void> _stopAmbientSound() async {
+    try {
+      await _ambientAudioService.stopAmbient();
+    } catch (_) {}
+  }
+
+  /// جلب سجل الجلسات المكتملة
+  List<Map<String, dynamic>> getSessionHistory() {
+    if (_box == null) return [];
+    final raw = _box.get(keySessionHistory);
+    if (raw is List) {
+      return raw.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+    }
+    return [];
+  }
+
   /// معالجة اكتمال جلسة بومودورو وتثبيت الإنجاز محلياً في Hive
   void _onSessionCompleted() {
     _timer?.cancel();
+    _stopAmbientSound();
 
     final isFocus = state.mode == PomodoroMode.focus;
     final newSessions = isFocus ? state.completedSessions + 1 : state.completedSessions;
     final xpEarned = isFocus ? 50 : 15;
     final newXp = state.xpPoints + xpEarned;
+
+    // تسجيل الجلسة في سجل التاريخ
+    if (isFocus) {
+      final history = getSessionHistory();
+      history.add({
+        'timestamp': DateTime.now().toIso8601String(),
+        'durationMinutes': state.focusDurationMinutes,
+        'taskId': state.selectedTaskId,
+        'xpEarned': xpEarned,
+      });
+      _box?.put(keySessionHistory, history);
+    }
 
     // تحديث سلسلة الأيام (Streaks) إذا كان يوماً جديداً
     int updatedStreak = state.streakDays;
@@ -185,7 +278,7 @@ class PomodoroCubit extends Cubit<PomodoroState> {
     _box?.put(keyLastActiveDate, now.toIso8601String());
 
     // إرسال تنبيه فوري باكتمال الجلسة
-    NotificationService.instance.scheduleTaskReminder(
+    _notificationService.scheduleTaskReminder(
       id: 999999,
       title: isFocus ? 'أحسنت! اكتملت جلسة التركيز 🎉' : 'انتهت الاستراحة! حان وقت الإنجاز 🚀',
       body: isFocus
@@ -215,6 +308,7 @@ class PomodoroCubit extends Cubit<PomodoroState> {
 
     emit(state.copyWith(
       isRunning: false,
+      clearTargetEndTime: true,
       completedSessions: newSessions,
       xpPoints: newXp,
       streakDays: updatedStreak,
@@ -227,6 +321,7 @@ class PomodoroCubit extends Cubit<PomodoroState> {
   @override
   Future<void> close() {
     _timer?.cancel();
+    _stopAmbientSound();
     return super.close();
   }
 }

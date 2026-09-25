@@ -181,6 +181,24 @@ void main() {
       expect(restored.attachments.length, equals(2));
       expect(restored.attachments.first, equals('/data/user/0/app/attachments/img1.jpg'));
     });
+
+    test('حقل الوقت المتوقع estimatedMinutes يُخزن ويُسترجع بنجاح', () {
+      final taskWithEst = TaskModel(
+        id: 'est-1',
+        title: 'مهمة بوقت متوقع',
+        dueDate: now,
+        priority: TaskPriority.high,
+        categoryId: 'work',
+        estimatedMinutes: 45,
+        createdAt: now,
+      );
+
+      final map = taskWithEst.toMap();
+      expect(map['estimatedMinutes'], equals(45));
+
+      final restored = TaskModel.fromMap(map);
+      expect(restored.estimatedMinutes, equals(45));
+    });
   });
 
   group('RecurrenceHelper Tests', () {

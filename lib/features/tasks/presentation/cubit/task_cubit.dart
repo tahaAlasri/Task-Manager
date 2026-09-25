@@ -9,6 +9,7 @@ import 'task_state.dart';
 /// Cubit لإدارة عمليات وبيانات المهام والفلترة والبحث
 class TaskCubit extends Cubit<TaskState> {
   final TaskRepository repository;
+  final INotificationService _notificationService;
   String? _currentUserId;
 
   /// معرف المستخدم الحالي المسجل لعزل بيانات المهام
@@ -29,7 +30,11 @@ class TaskCubit extends Cubit<TaskState> {
   /// callback اختياري لعرض رسائل للمستخدم (SnackBar) من خارج الـ Cubit
   void Function(String message)? onRecurringTaskCreated;
 
-  TaskCubit({required this.repository}) : super(const TaskState());
+  TaskCubit({
+    required this.repository,
+    INotificationService? notificationService,
+  })  : _notificationService = notificationService ?? NotificationService.instance,
+        super(const TaskState());
 
   /// تحميل كافة مهام المستخدم النشط من قاعدة البيانات المحلية
   Future<void> loadTasks() async {
@@ -88,7 +93,7 @@ class TaskCubit extends Cubit<TaskState> {
             ? 'تنبيه مسبق (خلال ${taskToSave.reminderMinutesBefore} دقيقة): ${taskToSave.description ?? taskToSave.title}'
             : (taskToSave.description ?? 'حفظ وإنجاز مهامك اليومية خطوة بخطوة');
 
-        await NotificationService.instance.scheduleTaskReminder(
+        await _notificationService.scheduleTaskReminder(
           id: notifId,
           title: 'تذكير بمهمة: ${taskToSave.title}',
           body: body,
@@ -120,14 +125,14 @@ class TaskCubit extends Cubit<TaskState> {
             ? 'تنبيه مسبق (خلال ${task.reminderMinutesBefore} دقيقة): ${task.description ?? task.title}'
             : (task.description ?? 'حان موعد استحقاق مهمتك');
 
-        await NotificationService.instance.scheduleTaskReminder(
+        await _notificationService.scheduleTaskReminder(
           id: notifId,
           title: 'تذكير بمهمة: ${task.title}',
           body: body,
           scheduledDate: scheduledDate,
         );
       } else {
-        await NotificationService.instance.cancelReminder(notifId);
+        await _notificationService.cancelReminder(notifId);
       }
 
       await loadTasks();
@@ -149,7 +154,7 @@ class TaskCubit extends Cubit<TaskState> {
 
       await repository.toggleTaskStatus(id);
       final notifId = id.hashCode.abs() % 1000000;
-      await NotificationService.instance.cancelReminder(notifId);
+      await _notificationService.cancelReminder(notifId);
 
       // إذا تم إكمال المهمة وهي متكررة → إنشاء النسخة التالية
       if (willBeCompleted && currentTask.isRecurring) {
@@ -204,7 +209,7 @@ class TaskCubit extends Cubit<TaskState> {
     // جدولة تنبيه للمهمة الجديدة
     if (newTask.isReminderEnabled) {
       final newNotifId = newTask.id.hashCode.abs() % 1000000;
-      await NotificationService.instance.scheduleTaskReminder(
+      await _notificationService.scheduleTaskReminder(
         id: newNotifId,
         title: 'تذكير بمهمة متكررة: ${newTask.title}',
         body: newTask.description ?? 'حان وقت إنجاز مهمتك المتكررة',
@@ -246,7 +251,7 @@ class TaskCubit extends Cubit<TaskState> {
     try {
       await repository.softDeleteTask(id);
       final notifId = id.hashCode.abs() % 1000000;
-      await NotificationService.instance.cancelReminder(notifId);
+      await _notificationService.cancelReminder(notifId);
       await loadTasks();
     } catch (e) {
       emit(state.copyWith(
@@ -274,7 +279,7 @@ class TaskCubit extends Cubit<TaskState> {
     try {
       await repository.permanentDeleteTask(id);
       final notifId = id.hashCode.abs() % 1000000;
-      await NotificationService.instance.cancelReminder(notifId);
+      await _notificationService.cancelReminder(notifId);
       await loadTasks();
     } catch (e) {
       emit(state.copyWith(
@@ -302,7 +307,7 @@ class TaskCubit extends Cubit<TaskState> {
     try {
       await repository.archiveTask(id);
       final notifId = id.hashCode.abs() % 1000000;
-      await NotificationService.instance.cancelReminder(notifId);
+      await _notificationService.cancelReminder(notifId);
       await loadTasks();
     } catch (e) {
       emit(state.copyWith(
@@ -339,6 +344,59 @@ class TaskCubit extends Cubit<TaskState> {
       emit(state.copyWith(
         status: TaskStateStatus.failure,
         errorMessage: 'فشل في حذف المهام المكتملة: $e',
+      ));
+    }
+  }
+  /// أرشفة عدة مهام دفعة واحدة
+  Future<void> archiveMultipleTasks(List<String> ids) async {
+    try {
+      for (final id in ids) {
+        await repository.archiveTask(id);
+        final notifId = id.hashCode.abs() % 1000000;
+        await _notificationService.cancelReminder(notifId);
+      }
+      await loadTasks();
+    } catch (e) {
+      emit(state.copyWith(
+        status: TaskStateStatus.failure,
+        errorMessage: 'فشل في أرشفة المهام المحددة: $e',
+      ));
+    }
+  }
+
+  /// حذف عدة مهام دفعة واحدة (نقل لسلة المهملات)
+  Future<void> deleteMultipleTasks(List<String> ids) async {
+    try {
+      for (final id in ids) {
+        await repository.softDeleteTask(id);
+        final notifId = id.hashCode.abs() % 1000000;
+        await _notificationService.cancelReminder(notifId);
+      }
+      await loadTasks();
+    } catch (e) {
+      emit(state.copyWith(
+        status: TaskStateStatus.failure,
+        errorMessage: 'فشل في حذف المهام المحددة: $e',
+      ));
+    }
+  }
+
+  /// إكمال عدة مهام دفعة واحدة
+  Future<void> completeMultipleTasks(List<String> ids) async {
+    try {
+      for (final id in ids) {
+        final task = state.tasks.firstWhere((t) => t.id == id, orElse: () => state.tasks.first);
+        if (!task.isCompleted) {
+          await repository.toggleTaskStatus(id);
+          final notifId = id.hashCode.abs() % 1000000;
+          await _notificationService.cancelReminder(notifId);
+        }
+      }
+      await loadTasks();
+    } catch (e) {
+      emit(state.copyWith(
+        status: TaskStateStatus.failure,
+        errorMessage: 'فشل في إكمال المهام المحددة: $e',
       ));
     }
   }

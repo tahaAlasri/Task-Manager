@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../analytics/presentation/screens/analytics_screen.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../pomodoro/presentation/screens/pomodoro_focus_screen.dart';
@@ -52,6 +53,10 @@ class _MainNavScreenState extends State<MainNavScreen> {
         onToggleTheme: widget.onToggleTheme,
         isDarkMode: widget.isDarkMode,
       ),
+      AnalyticsScreen(
+        onToggleTheme: widget.onToggleTheme,
+        isDarkMode: widget.isDarkMode,
+      ),
       FavoritesScreen(
         onToggleTheme: widget.onToggleTheme,
         isDarkMode: widget.isDarkMode,
@@ -92,6 +97,11 @@ class _MainNavScreenState extends State<MainNavScreen> {
               icon: Icon(Icons.calendar_month_outlined),
               selectedIcon: Icon(Icons.calendar_month_rounded, color: AppColors.primary),
               label: 'التقويم',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.insights_outlined),
+              selectedIcon: Icon(Icons.insights_rounded, color: AppColors.primary),
+              label: 'الإحصائيات',
             ),
             NavigationDestination(
               icon: Icon(Icons.star_outline_rounded),

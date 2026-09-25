@@ -11,27 +11,28 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> checkAuthStatus() async {
     try {
       final hasSeen = await repository.hasSeenOnboarding();
-      final isBioAvailable = await repository.isBiometricsSupported();
       final isLoggedIn = await repository.isLoggedIn();
+      final user = isLoggedIn ? await repository.getCurrentUser() : null;
 
-      if (isLoggedIn) {
-        final user = await repository.getCurrentUser();
-        emit(state.copyWith(
-          status: AuthStatus.authenticated,
-          user: user,
-          hasSeenOnboarding: hasSeen,
-          isBiometricsAvailable: isBioAvailable,
-        ));
-      } else {
-        emit(state.copyWith(
-          status: AuthStatus.unauthenticated,
-          clearUser: true,
-          hasSeenOnboarding: hasSeen,
-          isBiometricsAvailable: isBioAvailable,
-        ));
-      }
+      emit(state.copyWith(
+        status: (isLoggedIn && user != null) ? AuthStatus.authenticated : AuthStatus.unauthenticated,
+        user: user,
+        hasSeenOnboarding: hasSeen,
+        clearUser: !isLoggedIn || user == null,
+      ));
+
+      // فحص دعم البصمة بشكل منفصل حتى لا يؤخر فتح التطبيق
+      try {
+        final isBioAvailable = await repository.isBiometricsSupported();
+        emit(state.copyWith(isBiometricsAvailable: isBioAvailable));
+      } catch (_) {}
     } catch (_) {
-      emit(state.copyWith(status: AuthStatus.unauthenticated, clearUser: true));
+      final hasSeen = await repository.hasSeenOnboarding().catchError((_) => false);
+      emit(state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearUser: true,
+        hasSeenOnboarding: hasSeen,
+      ));
     }
   }
 
@@ -61,6 +62,20 @@ class AuthCubit extends Cubit<AuthState> {
         status: AuthStatus.authenticated,
         user: user,
       ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: AuthStatus.failure,
+        errorMessage: e.toString().replaceAll('Exception:', '').trim(),
+      ));
+    }
+  }
+
+  /// إعادة تعيين كلمة المرور
+  Future<void> resetPassword(String email, String newPassword) async {
+    emit(state.copyWith(status: AuthStatus.loading, errorMessage: null));
+    try {
+      await repository.resetPassword(email, newPassword);
+      emit(state.copyWith(status: AuthStatus.unauthenticated, errorMessage: null));
     } catch (e) {
       emit(state.copyWith(
         status: AuthStatus.failure,

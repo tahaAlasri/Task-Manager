@@ -1,15 +1,44 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:task_manager/core/services/ambient_audio_service.dart';
 import 'package:task_manager/features/pomodoro/presentation/cubit/pomodoro_cubit.dart';
 import 'package:task_manager/features/pomodoro/presentation/cubit/pomodoro_state.dart';
+
+class FakeAmbientAudioService implements IAmbientAudioService {
+  String? lastPlayedType;
+  double lastVolume = 0.5;
+  bool isPlaying = false;
+
+  @override
+  Future<void> playAmbient(String type, {double volume = 0.5}) async {
+    lastPlayedType = type;
+    lastVolume = volume;
+    isPlaying = true;
+  }
+
+  @override
+  Future<void> stopAmbient() async {
+    isPlaying = false;
+  }
+
+  @override
+  Future<void> setVolume(double volume) async {
+    lastVolume = volume;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('PomodoroCubit Tests', () {
     late PomodoroCubit cubit;
+    late FakeAmbientAudioService fakeAudioService;
 
     setUp(() {
-      cubit = PomodoroCubit();
+      fakeAudioService = FakeAmbientAudioService();
+      cubit = PomodoroCubit(ambientAudioService: fakeAudioService);
     });
 
     tearDown(() {
@@ -50,6 +79,24 @@ void main() {
 
       cubit.bindTask(null);
       expect(cubit.state.selectedTaskId, isNull);
+    });
+
+    test('بدء المؤقت يحدد وقت النهاية المستهدف targetEndTime وتكون الحالة قيد التشغيل', () {
+      cubit.startTimer();
+      expect(cubit.state.isRunning, isTrue);
+      expect(cubit.state.targetEndTime, isNotNull);
+
+      cubit.pauseTimer();
+      expect(cubit.state.isRunning, isFalse);
+      expect(cubit.state.targetEndTime, isNull);
+    });
+
+    test('تغيير الصوت المحيطي ومستوى الصوت يحدث الحالة', () async {
+      await cubit.setAmbientSound(AmbientSoundType.rain);
+      expect(cubit.state.ambientSound, equals(AmbientSoundType.rain));
+
+      await cubit.setAmbientVolume(0.8);
+      expect(cubit.state.ambientVolume, equals(0.8));
     });
   });
 }

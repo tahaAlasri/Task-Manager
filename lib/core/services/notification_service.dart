@@ -3,8 +3,23 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
+/// واجهة خدمة التنبيهات لتسهيل حقن التبعيات والاختبارات التلقائية
+abstract class INotificationService {
+  Future<void> initialize();
+  Future<bool> areNotificationsEnabled();
+  Future<bool?> requestPermissions();
+  Future<void> scheduleTaskReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  });
+  Future<void> cancelReminder(int id);
+  Future<void> cancelAll();
+}
+
 /// خدمة إدارة التنبيهات والإشعارات المحلية للمهام
-class NotificationService {
+class NotificationService implements INotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
@@ -14,6 +29,7 @@ class NotificationService {
   bool _isInitialized = false;
 
   /// تهيئة إعدادات الإشعارات
+  @override
   Future<void> initialize() async {
     if (_isInitialized) return;
 
@@ -49,6 +65,7 @@ class NotificationService {
   }
 
   /// التحقق الفعلي مما إذا كانت الإشعارات مفعلة للتطبيق
+  @override
   Future<bool> areNotificationsEnabled() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.android) {
@@ -64,6 +81,7 @@ class NotificationService {
   }
 
   /// طلب إذن الإشعارات (Android 13+ و iOS)
+  @override
   Future<bool?> requestPermissions() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.android) {
@@ -84,6 +102,7 @@ class NotificationService {
   }
 
   /// جدولة إشعار تذكيري لمهمة قبل موعدها
+  @override
   Future<void> scheduleTaskReminder({
     required int id,
     required String title,
@@ -130,6 +149,7 @@ class NotificationService {
   }
 
   /// إلغاء تنبيه مهمة معينة
+  @override
   Future<void> cancelReminder(int id) async {
     try {
       await _notificationsPlugin.cancel(id: id);
@@ -139,6 +159,7 @@ class NotificationService {
   }
 
   /// إلغاء جميع التنبيهات
+  @override
   Future<void> cancelAll() async {
     try {
       await _notificationsPlugin.cancelAll();

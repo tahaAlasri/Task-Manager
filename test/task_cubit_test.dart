@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:task_manager/core/services/notification_service.dart';
 import 'package:task_manager/features/tasks/domain/entities/subtask_entity.dart';
 import 'package:task_manager/features/tasks/domain/entities/task_entity.dart';
 import 'package:task_manager/features/tasks/domain/repositories/task_repository.dart';
@@ -155,16 +156,38 @@ class FakeTaskRepository implements TaskRepository {
   }
 }
 
+class FakeNotificationService implements INotificationService {
+  @override
+  Future<void> initialize() async {}
+  @override
+  Future<bool> areNotificationsEnabled() async => true;
+  @override
+  Future<bool?> requestPermissions() async => true;
+  @override
+  Future<void> scheduleTaskReminder({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {}
+  @override
+  Future<void> cancelReminder(int id) async {}
+  @override
+  Future<void> cancelAll() async {}
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('TaskCubit Tests', () {
     late FakeTaskRepository fakeRepo;
+    late FakeNotificationService fakeNotif;
     late TaskCubit cubit;
 
     setUp(() {
       fakeRepo = FakeTaskRepository();
-      cubit = TaskCubit(repository: fakeRepo);
+      fakeNotif = FakeNotificationService();
+      cubit = TaskCubit(repository: fakeRepo, notificationService: fakeNotif);
     });
 
     tearDown(() {

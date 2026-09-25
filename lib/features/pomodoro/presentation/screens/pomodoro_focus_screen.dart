@@ -411,7 +411,79 @@ class PomodoroFocusScreen extends StatelessWidget {
                     );
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // 5.5 أصوات التركيز المحيطية (Ambient Sounds)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.graphic_eq_rounded, size: 18, color: AppColors.secondary),
+                          SizedBox(width: 8),
+                          Text(
+                            'أصوات الخلفية المهدئة (Ambient Sound)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: AmbientSoundType.values.map((sound) {
+                            final isSelected = state.ambientSound == sound;
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: ChoiceChip(
+                                label: Text(sound.labelAr),
+                                selected: isSelected,
+                                selectedColor: AppColors.primaryLight,
+                                labelStyle: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? AppColors.primary : null,
+                                ),
+                                onSelected: (_) {
+                                  context.read<PomodoroCubit>().setAmbientSound(sound);
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      if (state.ambientSound != AmbientSoundType.none) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            const Icon(Icons.volume_down_rounded, size: 18, color: Colors.grey),
+                            Expanded(
+                              child: Slider(
+                                value: state.ambientVolume,
+                                min: 0.0,
+                                max: 1.0,
+                                divisions: 10,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) {
+                                  context.read<PomodoroCubit>().setAmbientVolume(val);
+                                },
+                              ),
+                            ),
+                            const Icon(Icons.volume_up_rounded, size: 18, color: Colors.grey),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 // 6. ملخص الجلسات اليومية المكتملة
                 Container(

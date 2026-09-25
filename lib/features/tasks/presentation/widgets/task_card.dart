@@ -8,7 +8,7 @@ import '../../domain/entities/task_entity.dart';
 import '../cubit/category_cubit.dart';
 import 'image_viewer_dialog.dart';
 
-/// بطاقة عرض المهمة بتصميم عصري ومتفاعل مع Material 3
+/// بطاقة عرض المهمة بتصميم عصري ومتفاعل مع Material 3 ويدعم التحديد الجماعي
 class TaskCard extends StatelessWidget {
   final TaskEntity task;
   final VoidCallback onToggle;
@@ -16,6 +16,10 @@ class TaskCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback? onArchive;
   final VoidCallback? onToggleFavorite;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback? onSelect;
+  final VoidCallback? onLongPress;
 
   const TaskCard({
     super.key,
@@ -25,6 +29,10 @@ class TaskCard extends StatelessWidget {
     required this.onDelete,
     this.onArchive,
     this.onToggleFavorite,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onSelect,
+    this.onLongPress,
   });
 
   Color _getPriorityColor(TaskPriority priority) {
@@ -50,13 +58,17 @@ class TaskCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white,
+        color: isSelected
+            ? (isDark ? AppColors.primary.withAlpha(45) : AppColors.primaryLight.withAlpha(120))
+            : (isDark ? AppColors.darkCard : Colors.white),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: task.isCompleted
-              ? (isDark ? Colors.grey.shade800 : Colors.grey.shade200)
-              : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          width: 1,
+          color: isSelected
+              ? AppColors.primary
+              : task.isCompleted
+                  ? (isDark ? Colors.grey.shade800 : Colors.grey.shade200)
+                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          width: isSelected ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
@@ -71,41 +83,64 @@ class TaskCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: onEdit,
+          onTap: isSelectionMode ? onSelect : onEdit,
+          onLongPress: onLongPress ?? onSelect,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // مربع اختيار الإنجاز
-                GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    onToggle();
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeInOut,
-                    width: 26,
-                    height: 26,
-                    margin: const EdgeInsets.only(top: 2),
-                    decoration: BoxDecoration(
-                      color: task.isCompleted
-                          ? AppColors.completed
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
+                // مربع الاختيار في وضع التحديد الجماعي أو مربع الإنجاز في الوضع العادي
+                if (isSelectionMode)
+                  GestureDetector(
+                    onTap: onSelect,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 26,
+                      height: 26,
+                      margin: const EdgeInsets.only(top: 2),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primary : Colors.grey,
+                          width: 2,
+                        ),
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check, size: 18, color: Colors.white)
+                          : null,
+                    ),
+                  )
+                else
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      onToggle();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      width: 26,
+                      height: 26,
+                      margin: const EdgeInsets.only(top: 2),
+                      decoration: BoxDecoration(
                         color: task.isCompleted
                             ? AppColors.completed
-                            : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
-                        width: 2,
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: task.isCompleted
+                              ? AppColors.completed
+                              : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
+                          width: 2,
+                        ),
                       ),
+                      child: task.isCompleted
+                          ? const Icon(Icons.check, size: 18, color: Colors.white)
+                          : null,
                     ),
-                    child: task.isCompleted
-                        ? const Icon(Icons.check, size: 18, color: Colors.white)
-                        : null,
                   ),
-                ),
                 const SizedBox(width: 12),
 
                 // تفاصيل المهمة
@@ -148,53 +183,74 @@ class TaskCard extends StatelessWidget {
                       // مؤشر شريط تقدم وقائمة المهام الفرعية (Checklist)
                       if (task.subtasksCount > 0) ...[
                         const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: task.subtasksProgress,
-                            minHeight: 5,
-                            backgroundColor: isDark ? Colors.white12 : Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              task.subtasksProgress == 1.0 ? AppColors.completed : AppColors.primary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(
-                              Icons.checklist_rounded,
-                              size: 14,
-                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: task.subtasksProgress,
+                                  minHeight: 6,
+                                  backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    task.subtasksProgress == 1.0 ? AppColors.completed : AppColors.primary,
+                                  ),
+                                ),
+                              ),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 8),
                             Text(
-                              '${task.completedSubtasksCount} من ${task.subtasksCount} مهام فرعية مكتملة',
+                              '${task.completedSubtasksCount}/${task.subtasksCount}',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                               ),
                             ),
                           ],
                         ),
+                        const SizedBox(height: 4),
+                        // قائمة معاينة سريعة لأول مهمتين فرعيتين
+                        ...task.subtasks.take(2).map((sub) => Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              Icon(
+                                sub.isCompleted ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                                size: 14,
+                                color: sub.isCompleted ? AppColors.completed : Colors.grey,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  sub.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: sub.isCompleted
+                                        ? Colors.grey
+                                        : (isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                                    decoration: sub.isCompleted ? TextDecoration.lineThrough : null,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )),
                       ],
 
-                      // الوسوم Tags إن وجدت
+                      // عرض الوسوم (Tags) إن وجدت
                       if (task.tags.isNotEmpty) ...[
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Wrap(
                           spacing: 4,
                           runSpacing: 4,
                           children: task.tags.map((tag) => Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white12 : Colors.grey.shade100,
+                              color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: isDark ? Colors.white24 : Colors.grey.shade300,
-                                width: 0.5,
-                              ),
                             ),
                             child: Text(
                               '#$tag',
@@ -210,7 +266,7 @@ class TaskCard extends StatelessWidget {
 
                       const SizedBox(height: 10),
 
-                      // الشارات (الفئة، الأولوية، التاريخ)
+                      // الشارات (الفئة، الأولوية، التاريخ، الوقت المقدر)
                       Wrap(
                         spacing: 8,
                         runSpacing: 6,
@@ -291,6 +347,31 @@ class TaskCard extends StatelessWidget {
                             ),
                           ),
 
+                          // شارة الوقت المقدر إن وجد
+                          if (task.estimatedMinutes > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.indigo.withAlpha(isDark ? 50 : 25),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.timer_outlined, size: 13, color: Colors.indigo),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${task.estimatedMinutes} دقيقة',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.indigo,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
                           // أيقونة التنبيه إن وجدت
                           if (task.isReminderEnabled)
                             const Icon(
@@ -357,72 +438,72 @@ class TaskCard extends StatelessWidget {
                   ),
                 ),
 
-                // زر المفضلة
-                if (onToggleFavorite != null)
-                  IconButton(
-                    icon: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
-                      child: Icon(
+                // زر النجمة (المفضلة) والقائمة المنبثقة
+                if (!isSelectionMode) ...[
+                  if (onToggleFavorite != null)
+                    IconButton(
+                      iconSize: 22,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: Icon(
                         task.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                        key: ValueKey(task.isFavorite),
-                        color: task.isFavorite ? Colors.amber : (isDark ? Colors.grey.shade500 : Colors.grey.shade400),
-                        size: 23,
+                        color: task.isFavorite ? Colors.amber : (isDark ? Colors.grey.shade600 : Colors.grey.shade400),
                       ),
+                      onPressed: onToggleFavorite,
+                      tooltip: task.isFavorite ? 'إزالة من المفضلة' : 'إضافة للمفضلة',
                     ),
-                    onPressed: onToggleFavorite,
-                    tooltip: task.isFavorite ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  ),
-
-                // زر الخيارات (تعديل / أرشفة / حذف)
-                PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert_rounded,
-                    size: 20,
-                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                  ),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  onSelected: (value) {
-                    if (value == 'edit') onEdit();
-                    if (value == 'archive') onArchive?.call();
-                    if (value == 'delete') onDelete();
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                          SizedBox(width: 8),
-                          Text('تعديل'),
-                        ],
-                      ),
+                  const SizedBox(width: 4),
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert_rounded,
+                      size: 20,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                     ),
-                    if (onArchive != null)
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEdit();
+                      } else if (value == 'archive' && onArchive != null) {
+                        onArchive!();
+                      } else if (value == 'delete') {
+                        onDelete();
+                      }
+                    },
+                    itemBuilder: (context) => [
                       const PopupMenuItem(
-                        value: 'archive',
+                        value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.archive_outlined, size: 18, color: Colors.blueGrey),
+                            Icon(Icons.edit_outlined, size: 18),
                             SizedBox(width: 8),
-                            Text('أرشفة'),
+                            Text('تعديل المهمة'),
                           ],
                         ),
                       ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.overdue),
-                          SizedBox(width: 8),
-                          Text('حذف', style: TextStyle(color: AppColors.overdue)),
-                        ],
+                      if (onArchive != null)
+                        const PopupMenuItem(
+                          value: 'archive',
+                          child: Row(
+                            children: [
+                              Icon(Icons.archive_outlined, size: 18, color: AppColors.secondary),
+                              SizedBox(width: 8),
+                              Text('أرشفة'),
+                            ],
+                          ),
+                        ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.overdue),
+                            SizedBox(width: 8),
+                            Text('حذف', style: TextStyle(color: AppColors.overdue)),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

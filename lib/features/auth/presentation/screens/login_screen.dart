@@ -85,6 +85,87 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  void _showForgotPasswordDialog() {
+    final emailCtrl = TextEditingController(text: _emailController.text.trim());
+    final newPassCtrl = TextEditingController();
+    final resetFormKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.lock_reset_rounded, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('استعادة كلمة المرور'),
+          ],
+        ),
+        content: Form(
+          key: resetFormKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'أدخل بريدك الإلكتروني المسجل وكلمة المرور الجديدة لإعادة تعيينها محلياً بأمان.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'البريد الإلكتروني',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+                validator: (val) => (val == null || !val.contains('@')) ? 'يرجى إدخال بريد صالح' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: newPassCtrl,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'كلمة المرور الجديدة',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
+                validator: (val) => (val == null || val.length < 6) ? 'لا تقل عن 6 خانات' : null,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (resetFormKey.currentState?.validate() ?? false) {
+                await context.read<AuthCubit>().resetPassword(
+                  emailCtrl.text.trim(),
+                  newPassCtrl.text.trim(),
+                );
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('تم إعادة تعيين كلمة المرور بنجاح ✅ يمكنك تسجيل الدخول الآن'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            child: const Text('تعيين الآن'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -229,7 +310,24 @@ class _LoginScreenState extends State<LoginScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 6),
+
+                      // زر نسيت كلمة المرور
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: _showForgotPasswordDialog,
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                          ),
+                          child: const Text(
+                            'نسيت كلمة المرور؟',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
                       // زر تسجيل الدخول
                       SizedBox(

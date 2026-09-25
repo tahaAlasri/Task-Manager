@@ -32,6 +32,102 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final Set<String> _selectedTaskIds = {};
+
+  bool get _isSelectionMode => _selectedTaskIds.isNotEmpty;
+
+  void _toggleSelection(String taskId) {
+    setState(() {
+      if (_selectedTaskIds.contains(taskId)) {
+        _selectedTaskIds.remove(taskId);
+      } else {
+        _selectedTaskIds.add(taskId);
+      }
+    });
+  }
+
+  void _selectAll(List<TaskEntity> tasks) {
+    setState(() {
+      if (_selectedTaskIds.length == tasks.length) {
+        _selectedTaskIds.clear();
+      } else {
+        _selectedTaskIds.clear();
+        _selectedTaskIds.addAll(tasks.map((t) => t.id));
+      }
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedTaskIds.clear();
+    });
+  }
+
+  void _batchComplete() {
+    if (_selectedTaskIds.isEmpty) return;
+    final ids = _selectedTaskIds.toList();
+    context.read<TaskCubit>().completeMultipleTasks(ids);
+    final count = ids.length;
+    _clearSelection();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('تم إكمال $count مهمة بنجاح 🎉'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _batchArchive() {
+    if (_selectedTaskIds.isEmpty) return;
+    final ids = _selectedTaskIds.toList();
+    context.read<TaskCubit>().archiveMultipleTasks(ids);
+    final count = ids.length;
+    _clearSelection();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('تم أرشفة $count مهمة 📦'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _batchDelete() {
+    if (_selectedTaskIds.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('حذف المهام المحددة'),
+        content: Text('هل أنت متأكد من رغبتك في نقل ${_selectedTaskIds.length} مهمة إلى سلة المهملات؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final ids = _selectedTaskIds.toList();
+              context.read<TaskCubit>().deleteMultipleTasks(ids);
+              Navigator.pop(ctx);
+              final count = ids.length;
+              _clearSelection();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('تم نقل $count مهمة إلى سلة المهملات'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.overdue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('حذف المحدد'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -233,245 +329,323 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.secondary],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.task_alt, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'إنجاز | مهامي',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-          ],
-        ),
-        actions: [
-          // زر تبديل الوضع الداكن / الفاتح إن كان متوفراً
-          if (widget.onToggleTheme != null)
-            IconButton(
-              icon: Icon(
-                widget.isDarkMode
-                    ? Icons.light_mode_rounded
-                    : Icons.dark_mode_rounded,
-              ),
-              onPressed: widget.onToggleTheme,
-              tooltip: widget.isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن',
-            ),
+    return BlocBuilder<TaskCubit, TaskState>(
+      builder: (context, state) {
+        final filteredTasks = state.filteredTasks;
 
-          // قائمة الخيارات الإضافية
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            onSelected: (val) async {
-              if (val == 'categories') {
-                CategoryManageDialog.show(context);
-              } else if (val == 'archive') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ArchiveScreen()),
-                );
-              } else if (val == 'trash') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TrashScreen()),
-                );
-              } else if (val == 'permissions') {
-                PermissionsDialog.show(context);
-              } else if (val == 'local_backup') {
-                final tasks = context.read<TaskCubit>().state.tasks;
-                final success = await LocalDatabaseService.instance.createLocalBackup(tasks);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(
-                            success ? Icons.save_rounded : Icons.error_outline_rounded,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(success
-                                ? 'تم النسخ الاحتياطي في قاعدة بيانات Hive المحلية بنجاح 💾 (بدون إنترنت)'
-                                : 'تعذر حفظ النسخة الاحتياطية المحلية'),
-                          ),
-                        ],
-                      ),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              } else if (val == 'local_restore') {
-                showDialog(
-                  context: context,
-                  builder: (dialogCtx) => AlertDialog(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    title: const Text('استعادة النسخة الاحتياطية'),
-                    content: const Text(
-                      'هل أنت متأكد من استعادة المهام من آخر نسخة احتياطية محلية؟',
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(dialogCtx),
-                        child: const Text('إلغاء'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final taskCubit = context.read<TaskCubit>();
-                          final scaffold = ScaffoldMessenger.of(context);
-                          Navigator.pop(dialogCtx);
-                          final count = await LocalDatabaseService.instance.restoreBackupToActiveBox();
-                          if (context.mounted) {
-                            if (count != null && count > 0) {
-                              await taskCubit.loadTasks();
-                              scaffold.showSnackBar(
-                                SnackBar(
-                                  content: Text('تمت استعادة $count مهمة بنجاح 🚀'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            } else {
-                              scaffold.showSnackBar(
-                                const SnackBar(
-                                  content: Text('لم يتم العثور على نسخة احتياطية صالحة'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                        child: const Text('تأكيد الاستعادة'),
-                      ),
-                    ],
+        return Scaffold(
+          appBar: _isSelectionMode
+              ? AppBar(
+                  backgroundColor: isDark ? AppColors.darkCard : AppColors.primaryLight,
+                  leading: IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: _clearSelection,
+                    tooltip: 'إلغاء التحديد',
                   ),
-                );
-              } else if (val == 'clear_completed') {
-                _confirmDeleteCompleted();
-              } else if (val == 'logout') {
-                _confirmLogout();
-              }
-            },
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(
-                value: 'categories',
-                child: Row(
-                  children: [
-                    Icon(Icons.category_rounded, size: 18, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text('إدارة الفئات'),
+                  title: Text(
+                    'تم تحديد ${_selectedTaskIds.length}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(
+                        _selectedTaskIds.length == filteredTasks.length && filteredTasks.isNotEmpty
+                            ? Icons.deselect_rounded
+                            : Icons.select_all_rounded,
+                        color: AppColors.primary,
+                      ),
+                      tooltip: _selectedTaskIds.length == filteredTasks.length && filteredTasks.isNotEmpty
+                          ? 'إلغاء تحديد الكل'
+                          : 'تحديد الكل',
+                      onPressed: () => _selectAll(filteredTasks),
+                    ),
                   ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'archive',
-                child: Row(
-                  children: [
-                    Icon(Icons.archive_outlined, size: 18, color: Colors.blueGrey),
-                    SizedBox(width: 8),
-                    Text('الأرشيف'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'trash',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete_sweep_outlined, size: 18, color: AppColors.overdue),
-                    SizedBox(width: 8),
-                    Text('سلة المهملات'),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem(
-                value: 'permissions',
-                child: Row(
-                  children: [
-                    Icon(Icons.security_rounded, size: 18, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text('مركز الأذونات'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'local_backup',
-                child: Row(
-                  children: [
-                    Icon(Icons.save_rounded, size: 18, color: AppColors.secondary),
-                    SizedBox(width: 8),
-                    Text('نسخ احتياطي محلي (Hive)'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'local_restore',
-                child: Row(
-                  children: [
-                    Icon(Icons.restore_rounded, size: 18, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text('استعادة نسخة احتياطية'),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                value: 'clear_completed',
-                child: Row(
-                  children: [
-                    Icon(Icons.cleaning_services_rounded, size: 18, color: AppColors.overdue),
-                    SizedBox(width: 8),
-                    Text('حذف المكتملة'),
-                  ],
-                ),
-              ),
-              if (context.read<AuthCubit>().state.isAuthenticated)
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
+                )
+              : AppBar(
+                  title: Row(
                     children: [
-                      Icon(Icons.logout_rounded, size: 18, color: AppColors.overdue),
-                      SizedBox(width: 8),
-                      Text('تسجيل الخروج'),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.secondary],
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.task_alt, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'إنجاز | مهامي',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                      ),
                     ],
                   ),
+                  actions: [
+                    // زر تبديل الوضع الداكن / الفاتح إن كان متوفراً
+                    if (widget.onToggleTheme != null)
+                      IconButton(
+                        icon: Icon(
+                          widget.isDarkMode
+                              ? Icons.light_mode_rounded
+                              : Icons.dark_mode_rounded,
+                        ),
+                        onPressed: widget.onToggleTheme,
+                        tooltip: widget.isDarkMode ? 'الوضع الفاتح' : 'الوضع الداكن',
+                      ),
+
+                    // قائمة الخيارات الإضافية
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert_rounded),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      onSelected: (val) async {
+                        if (val == 'categories') {
+                          CategoryManageDialog.show(context);
+                        } else if (val == 'archive') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ArchiveScreen()),
+                          );
+                        } else if (val == 'trash') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const TrashScreen()),
+                          );
+                        } else if (val == 'permissions') {
+                          PermissionsDialog.show(context);
+                        } else if (val == 'local_backup') {
+                          final tasks = context.read<TaskCubit>().state.tasks;
+                          final success = await LocalDatabaseService.instance.createLocalBackup(tasks);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    Icon(
+                                      success ? Icons.save_rounded : Icons.error_outline_rounded,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(success
+                                          ? 'تم النسخ الاحتياطي في قاعدة بيانات Hive المحلية بنجاح 💾 (بدون إنترنت)'
+                                          : 'تعذر حفظ النسخة الاحتياطية المحلية'),
+                                    ),
+                                  ],
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } else if (val == 'local_restore') {
+                          showDialog(
+                            context: context,
+                            builder: (dialogCtx) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              title: const Text('استعادة النسخة الاحتياطية'),
+                              content: const Text(
+                                'هل أنت متأكد من استعادة المهام من آخر نسخة احتياطية محلية؟',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogCtx),
+                                  child: const Text('إلغاء'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    final taskCubit = context.read<TaskCubit>();
+                                    final scaffold = ScaffoldMessenger.of(context);
+                                    Navigator.pop(dialogCtx);
+                                    final count = await LocalDatabaseService.instance.restoreBackupToActiveBox();
+                                    if (context.mounted) {
+                                      if (count != null && count > 0) {
+                                        await taskCubit.loadTasks();
+                                        scaffold.showSnackBar(
+                                          SnackBar(
+                                            content: Text('تمت استعادة $count مهمة بنجاح 🚀'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      } else {
+                                        scaffold.showSnackBar(
+                                          const SnackBar(
+                                            content: Text('لم يتم العثور على نسخة احتياطية صالحة'),
+                                            behavior: SnackBarBehavior.floating,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                                  child: const Text('تأكيد الاستعادة'),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else if (val == 'clear_completed') {
+                          _confirmDeleteCompleted();
+                        } else if (val == 'logout') {
+                          _confirmLogout();
+                        }
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(
+                          value: 'categories',
+                          child: Row(
+                            children: [
+                              Icon(Icons.category_rounded, size: 18, color: AppColors.primary),
+                              SizedBox(width: 8),
+                              Text('إدارة الفئات'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'archive',
+                          child: Row(
+                            children: [
+                              Icon(Icons.archive_outlined, size: 18, color: Colors.blueGrey),
+                              SizedBox(width: 8),
+                              Text('الأرشيف'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'trash',
+                          child: Row(
+                            children: [
+                              Icon(Icons.delete_sweep_outlined, size: 18, color: AppColors.overdue),
+                              SizedBox(width: 8),
+                              Text('سلة المهملات'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuDivider(),
+                        const PopupMenuItem(
+                          value: 'permissions',
+                          child: Row(
+                            children: [
+                              Icon(Icons.security_rounded, size: 18, color: AppColors.primary),
+                              SizedBox(width: 8),
+                              Text('مركز الأذونات'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'local_backup',
+                          child: Row(
+                            children: [
+                              Icon(Icons.save_rounded, size: 18, color: AppColors.secondary),
+                              SizedBox(width: 8),
+                              Text('نسخ احتياطي محلي (Hive)'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'local_restore',
+                          child: Row(
+                            children: [
+                              Icon(Icons.restore_rounded, size: 18, color: AppColors.primary),
+                              SizedBox(width: 8),
+                              Text('استعادة نسخة احتياطية'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'clear_completed',
+                          child: Row(
+                            children: [
+                              Icon(Icons.cleaning_services_rounded, size: 18, color: AppColors.overdue),
+                              SizedBox(width: 8),
+                              Text('حذف المكتملة'),
+                            ],
+                          ),
+                        ),
+                        if (context.read<AuthCubit>().state.isAuthenticated)
+                          const PopupMenuItem(
+                            value: 'logout',
+                            child: Row(
+                              children: [
+                                Icon(Icons.logout_rounded, size: 18, color: AppColors.overdue),
+                                SizedBox(width: 8),
+                                Text('تسجيل الخروج'),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
-            ],
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddTaskSheet,
-        icon: const Icon(Icons.add_rounded, size: 22),
-        label: const Text(
-          'مهمة جديدة',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-        ),
-      ),
-      body: BlocBuilder<TaskCubit, TaskState>(
-        builder: (context, state) {
-          if (state.status == TaskStateStatus.loading && state.tasks.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final filteredTasks = state.filteredTasks;
-
-          return CustomScrollView(
-            slivers: [
-              // 1. بطاقة ملخص الإنجاز والتقدم (Stats Card)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Container(
-                    padding: const EdgeInsets.all(18),
+          floatingActionButton: _isSelectionMode
+              ? null
+              : FloatingActionButton.extended(
+                  onPressed: _openAddTaskSheet,
+                  icon: const Icon(Icons.add_rounded, size: 22),
+                  label: const Text(
+                    'مهمة جديدة',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
+          bottomNavigationBar: _isSelectionMode
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkCard : Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(30),
+                        blurRadius: 10,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _batchComplete,
+                        icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                        label: const Text('إكمال المحدد'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.completed,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _batchArchive,
+                        icon: const Icon(Icons.archive_outlined, size: 18),
+                        label: const Text('أرشفة'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _batchDelete,
+                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                        label: const Text('حذف'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.overdue,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : null,
+          body: (state.status == TaskStateStatus.loading && state.tasks.isEmpty)
+              ? const Center(child: CircularProgressIndicator())
+              : CustomScrollView(
+                  slivers: [
+                    // 1. بطاقة ملخص الإنجاز والتقدم (Stats Card)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isDark
@@ -888,6 +1062,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: TaskCard(
                             key: ValueKey(task.id),
                             task: task,
+                            isSelectionMode: _isSelectionMode,
+                            isSelected: _selectedTaskIds.contains(task.id),
+                            onSelect: () => _toggleSelection(task.id),
+                            onLongPress: () => _toggleSelection(task.id),
                             onToggle: () => context.read<TaskCubit>().toggleTaskStatus(task.id),
                             onToggleFavorite: () => context.read<TaskCubit>().toggleFavorite(task.id),
                             onEdit: () => _openEditTaskSheet(task),
@@ -901,9 +1079,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 

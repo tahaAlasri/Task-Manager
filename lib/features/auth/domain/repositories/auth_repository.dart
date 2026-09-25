@@ -6,6 +6,7 @@ abstract class AuthRepository {
   Future<bool> isLoggedIn();
   Future<UserEntity> login(String email, String password);
   Future<UserEntity> register(String name, String email, String password);
+  Future<void> resetPassword(String email, String newPassword);
   Future<void> deleteAccount();
   Future<UserEntity> updateProfile({required String name, String? newPassword});
   Future<UserEntity?> loginWithBiometrics();

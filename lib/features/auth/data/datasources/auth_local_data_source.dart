@@ -9,6 +9,7 @@ abstract class AuthLocalDataSource {
   Future<bool> isLoggedIn();
   Future<UserModel> login(String email, String password);
   Future<UserModel> register(String name, String email, String password);
+  Future<void> resetPassword(String email, String newPassword);
   Future<void> deleteAccount();
   Future<UserModel> updateProfile({required String name, String? newPassword});
   Future<void> saveCurrentUser(UserModel user);
@@ -112,6 +113,21 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
     // تعيينه كمستخدم حالي نشط
     await saveCurrentUser(newUser);
     return newUser;
+  }
+
+  @override
+  Future<void> resetPassword(String email, String newPassword) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final userKey = 'user_$normalizedEmail';
+    final userData = _authBox.get(userKey);
+
+    if (userData == null || userData is! Map) {
+      throw 'الحساب غير مسجل، يرجى التأكد من البريد الإلكتروني';
+    }
+
+    final storedUser = UserModel.fromMap(userData);
+    final updated = storedUser.copyWith(password: _hashPassword(newPassword.trim()));
+    await _authBox.put(userKey, updated.toMap());
   }
 
   @override

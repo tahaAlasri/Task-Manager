@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../../../auth/presentation/cubit/auth_state.dart';
 import '../../../onboarding/presentation/screens/onboarding_screen.dart';
 import 'main_nav_screen.dart';
 
@@ -52,9 +55,26 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
-  void _navigateToNext() {
-    final authState = context.read<AuthCubit>().state;
-    if (!authState.hasSeenOnboarding) {
+  Future<void> _navigateToNext() async {
+    final authCubit = context.read<AuthCubit>();
+    if (authCubit.state.status == AuthStatus.initial) {
+      try {
+        await authCubit.stream.firstWhere(
+          (s) => s.status != AuthStatus.initial,
+        ).timeout(const Duration(seconds: 1));
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+
+    // فحص مؤكد لحالة مشاهدة شاشة التعريف من Cubit أو مباشرة من Hive
+    bool hasSeenOnboarding = authCubit.state.hasSeenOnboarding;
+    if (!hasSeenOnboarding && Hive.isBoxOpen(AppConstants.settingsBoxName)) {
+      final box = Hive.box(AppConstants.settingsBoxName);
+      hasSeenOnboarding = box.get(AppConstants.keyHasSeenOnboarding, defaultValue: false) == true;
+    }
+
+    if (!hasSeenOnboarding) {
       _goTo(OnboardingScreen(
         onToggleTheme: widget.onToggleTheme,
         isDarkMode: widget.isDarkMode,

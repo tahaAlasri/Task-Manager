@@ -26,6 +26,44 @@ enum PomodoroMode {
   }
 }
 
+enum AmbientSoundType {
+  none,
+  rain,
+  waves,
+  forest,
+  cafe;
+
+  String get labelAr {
+    switch (this) {
+      case AmbientSoundType.none:
+        return 'صامت 🔇';
+      case AmbientSoundType.rain:
+        return 'صوت المطر 🌧️';
+      case AmbientSoundType.waves:
+        return 'أمواج البحر 🌊';
+      case AmbientSoundType.forest:
+        return 'أصوات الطبيعة 🌲';
+      case AmbientSoundType.cafe:
+        return 'أجواء المقهى ☕';
+    }
+  }
+
+  String? get assetPath {
+    switch (this) {
+      case AmbientSoundType.none:
+        return null;
+      case AmbientSoundType.rain:
+        return 'audio/rain.mp3';
+      case AmbientSoundType.waves:
+        return 'audio/waves.mp3';
+      case AmbientSoundType.forest:
+        return 'audio/forest.mp3';
+      case AmbientSoundType.cafe:
+        return 'audio/cafe.mp3';
+    }
+  }
+}
+
 class PomodoroState {
   final PomodoroMode mode;
   final int remainingSeconds;
@@ -38,6 +76,9 @@ class PomodoroState {
   final int focusDurationMinutes;
   final int shortBreakMinutes;
   final int longBreakMinutes;
+  final DateTime? targetEndTime;
+  final AmbientSoundType ambientSound;
+  final double ambientVolume;
 
   const PomodoroState({
     this.mode = PomodoroMode.focus,
@@ -51,9 +92,13 @@ class PomodoroState {
     this.focusDurationMinutes = 25,
     this.shortBreakMinutes = 5,
     this.longBreakMinutes = 15,
+    this.targetEndTime,
+    this.ambientSound = AmbientSoundType.none,
+    this.ambientVolume = 0.6,
   });
 
-  double get progress => totalSeconds == 0 ? 0.0 : (totalSeconds - remainingSeconds) / totalSeconds;
+  double get progress =>
+      totalSeconds == 0 ? 0.0 : (totalSeconds - remainingSeconds) / totalSeconds;
 
   String get formattedTime {
     final minutes = (remainingSeconds ~/ 60).toString().padLeft(2, '0');
@@ -83,6 +128,10 @@ class PomodoroState {
     int? focusDurationMinutes,
     int? shortBreakMinutes,
     int? longBreakMinutes,
+    DateTime? targetEndTime,
+    bool clearTargetEndTime = false,
+    AmbientSoundType? ambientSound,
+    double? ambientVolume,
   }) {
     return PomodoroState(
       mode: mode ?? this.mode,
@@ -92,10 +141,16 @@ class PomodoroState {
       completedSessions: completedSessions ?? this.completedSessions,
       streakDays: streakDays ?? this.streakDays,
       xpPoints: xpPoints ?? this.xpPoints,
-      selectedTaskId: clearSelectedTask ? null : (selectedTaskId ?? this.selectedTaskId),
+      selectedTaskId:
+          clearSelectedTask ? null : (selectedTaskId ?? this.selectedTaskId),
       focusDurationMinutes: focusDurationMinutes ?? this.focusDurationMinutes,
       shortBreakMinutes: shortBreakMinutes ?? this.shortBreakMinutes,
       longBreakMinutes: longBreakMinutes ?? this.longBreakMinutes,
+      targetEndTime: clearTargetEndTime
+          ? null
+          : (targetEndTime ?? this.targetEndTime),
+      ambientSound: ambientSound ?? this.ambientSound,
+      ambientVolume: ambientVolume ?? this.ambientVolume,
     );
   }
 }

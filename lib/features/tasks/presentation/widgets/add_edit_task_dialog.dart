@@ -49,6 +49,7 @@ class _AddEditTaskBottomSheetState extends State<AddEditTaskBottomSheet> {
   late TextEditingController _titleController;
   late TextEditingController _descController;
   final TextEditingController _subtaskController = TextEditingController();
+  late TextEditingController _estimatedTimeController;
 
   late DateTime _selectedDate;
   late TimeOfDay _selectedTime;
@@ -69,6 +70,11 @@ class _AddEditTaskBottomSheetState extends State<AddEditTaskBottomSheet> {
     final task = widget.taskToEdit;
     _titleController = TextEditingController(text: task?.title ?? '');
     _descController = TextEditingController(text: task?.description ?? '');
+    _estimatedTimeController = TextEditingController(
+      text: (task?.estimatedMinutes != null && task!.estimatedMinutes > 0)
+          ? task.estimatedMinutes.toString()
+          : '',
+    );
     _subtasks = List<SubTaskEntity>.from(task?.subtasks ?? []);
     _tags = List<String>.from(task?.tags ?? []);
     _attachments = List<String>.from(task?.attachments ?? []);
@@ -225,6 +231,8 @@ class _AddEditTaskBottomSheetState extends State<AddEditTaskBottomSheet> {
         _selectedTime.minute,
       );
 
+      final estimatedMins = int.tryParse(_estimatedTimeController.text.trim()) ?? 0;
+
       final task = TaskEntity(
         id: widget.taskToEdit?.id ?? const Uuid().v4(),
         title: _titleController.text.trim(),
@@ -245,6 +253,7 @@ class _AddEditTaskBottomSheetState extends State<AddEditTaskBottomSheet> {
         tags: _tags,
         reminderMinutesBefore: _isReminderEnabled ? _reminderMinutesBefore : 0,
         attachments: _attachments,
+        estimatedMinutes: estimatedMins,
       );
 
       widget.onSave(task);
@@ -462,6 +471,24 @@ class _AddEditTaskBottomSheetState extends State<AddEditTaskBottomSheet> {
                     ),
                   );
                 }).toList(),
+              ),
+              const SizedBox(height: 16),
+
+              // حقل الوقت المتوقع للإنجاز (تقدير الوقت)
+              TextFormField(
+                controller: _estimatedTimeController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'مثال: 30 (بالدقائق)',
+                  labelText: 'الوقت المتوقع للإنجاز (بالدقائق - اختياري)',
+                  prefixIcon: const Icon(Icons.timer_outlined, color: Colors.indigo),
+                  filled: true,
+                  fillColor: isDark ? AppColors.darkCard : AppColors.lightBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
 

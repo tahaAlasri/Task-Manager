@@ -113,13 +113,14 @@ class TaskEntity {
   final RecurrenceType recurrenceType;
   final DateTime? recurrenceEndDate;
 
-  // الحقول الجديدة للمرحلة 2: الأرشفة وسلة المحذوفات والوسوم والتنبيه المسبق
+  // الحقول المتقدمة: الأرشفة وسلة المحذوفات والوسوم والتنبيه المسبق والوقت المقدر
   final bool isArchived;
   final bool isDeleted;
   final DateTime? deletedAt;
   final List<String> tags;
   final int reminderMinutesBefore; // 0 = في الوقت، 15 = قبل ربع ساعة، 60 = قبل ساعة، إلخ
   final List<String> attachments; // مسارات الصور والمرفقات المحفوظة محلياً
+  final int estimatedMinutes; // الوقت التقديري لإنجاز المهمة بالدقائق
 
   const TaskEntity({
     required this.id,
@@ -142,6 +143,7 @@ class TaskEntity {
     this.tags = const [],
     this.reminderMinutesBefore = 0,
     this.attachments = const [],
+    this.estimatedMinutes = 0,
   });
 
   int get subtasksCount => subtasks.length;
@@ -173,6 +175,7 @@ class TaskEntity {
     List<String>? tags,
     int? reminderMinutesBefore,
     List<String>? attachments,
+    int? estimatedMinutes,
   }) {
     return TaskEntity(
       id: id ?? this.id,
@@ -195,6 +198,7 @@ class TaskEntity {
       tags: tags ?? this.tags,
       reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
       attachments: attachments ?? this.attachments,
+      estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
     );
   }
 
@@ -220,7 +224,8 @@ class TaskEntity {
           isDeleted == other.isDeleted &&
           deletedAt == other.deletedAt &&
           reminderMinutesBefore == other.reminderMinutesBefore &&
-          attachments == other.attachments;
+          attachments == other.attachments &&
+          estimatedMinutes == other.estimatedMinutes;
 
   @override
   int get hashCode =>
@@ -241,5 +246,6 @@ class TaskEntity {
       isDeleted.hashCode ^
       deletedAt.hashCode ^
       reminderMinutesBefore.hashCode ^
-      attachments.hashCode;
+      attachments.hashCode ^
+      estimatedMinutes.hashCode;
 }

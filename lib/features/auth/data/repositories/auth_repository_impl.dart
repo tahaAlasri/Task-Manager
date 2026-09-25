@@ -33,6 +33,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> resetPassword(String email, String newPassword) async {
+    await localDataSource.resetPassword(email, newPassword);
+  }
+
+  @override
   Future<void> deleteAccount() async {
     await localDataSource.deleteAccount();
   }

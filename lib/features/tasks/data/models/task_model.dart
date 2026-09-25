@@ -24,6 +24,7 @@ class TaskModel extends TaskEntity {
     super.tags,
     super.reminderMinutesBefore,
     super.attachments,
+    super.estimatedMinutes,
   });
 
   /// تحويل كائن TaskEntity إلى TaskModel
@@ -49,6 +50,7 @@ class TaskModel extends TaskEntity {
       tags: entity.tags,
       reminderMinutesBefore: entity.reminderMinutesBefore,
       attachments: entity.attachments,
+      estimatedMinutes: entity.estimatedMinutes,
     );
   }
 
@@ -97,6 +99,7 @@ class TaskModel extends TaskEntity {
       tags: parsedTags,
       reminderMinutesBefore: map['reminderMinutesBefore'] as int? ?? 0,
       attachments: parsedAttachments,
+      estimatedMinutes: map['estimatedMinutes'] as int? ?? 0,
     );
   }
 
@@ -123,6 +126,7 @@ class TaskModel extends TaskEntity {
       'tags': tags,
       'reminderMinutesBefore': reminderMinutesBefore,
       'attachments': attachments,
+      'estimatedMinutes': estimatedMinutes,
     };
   }
 
@@ -151,6 +155,7 @@ class TaskModel extends TaskEntity {
     List<String>? tags,
     int? reminderMinutesBefore,
     List<String>? attachments,
+    int? estimatedMinutes,
   }) {
     return TaskModel(
       id: id ?? this.id,
@@ -173,7 +178,7 @@ class TaskModel extends TaskEntity {
       tags: tags ?? this.tags,
       reminderMinutesBefore: reminderMinutesBefore ?? this.reminderMinutesBefore,
       attachments: attachments ?? this.attachments,
+      estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
     );
   }
 }
-
